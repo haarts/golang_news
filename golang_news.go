@@ -7,17 +7,21 @@ import (
 	"net/url"
 	"os"
 	"time"
+	"log"
+	"regexp"
 )
 
 const timeout = 50
 
 func main() {
-	go PollFeed("http://blog.golang.org/feed.atom", timeout)
-	go PollFeed("https://news.ycombinator.com/rss", timeout)
-	PollFeed("http://www.reddit.com/r/golang.rss", timeout)
+	log.SetOutput(os.Stdout)
+
+	//go PollFeed("http://blog.golang.org/feed.atom", itemHandlerGoBlog)
+	//go PollFeed("https://news.ycombinator.com/rss", itemHandlerHackerNews)
+	PollFeed("http://www.reddit.com/r/golang.rss", itemHandlerReddit)
 }
 
-func PollFeed(uri string, timeout int) {
+func PollFeed(uri string, itemHandler rss.ItemHandler) {
 	feed := rss.New(timeout, true, chanHandler, itemHandler)
 
 	for {
@@ -31,11 +35,45 @@ func PollFeed(uri string, timeout int) {
 }
 
 func chanHandler(feed *rss.Feed, newchannels []*rss.Channel) {
-	fmt.Printf("%d new channel(s) in %s\n", len(newchannels), feed.Url)
+	//noop
 }
 
-func itemHandler(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
-	fmt.Printf("%d new item(s) in %s\n", len(newItems), feed.Url)
+func genericItemHandler(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item, individualItemHandler func(*rss.Item)) {
+	log.Printf("%d new item(s) in %s\n", len(newItems), feed.Url)
+	for _, item := range newItems {
+		individualItemHandler(item)
+	}
+}
+
+func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
+	f := func(item *rss.Item) {
+		if match, _ := regexp.MatchString(`\w Go`, item.Title); match {
+			fmt.Println(item)
+		}
+	}
+
+	genericItemHandler(feed, ch, newItems, f)
+}
+
+func itemHandlerGoBlog(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
+	f := func(item *rss.Item) {
+			fmt.Println(item)
+	}
+
+	genericItemHandler(feed, ch, newItems, f)
+}
+
+func itemHandlerReddit(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
+	f := func(item *rss.Item) {
+		re := regexp.MustCompile(`([^"]+)">\[link\]`)
+		matches := re.FindStringSubmatch(item.Description)
+		if len(matches) == 2 {
+			fmt.Println(matches[1])
+		}
+	}
+
+	//Actually I don't think passing everything around is necessary as the closure remembers context
+	genericItemHandler(feed, ch, newItems, f)
 }
 
 func PostTweet(tweet string) {
