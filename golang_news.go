@@ -3,15 +3,15 @@ package main
 import (
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
-	rss "github.com/jteeuwen/go-pkg-rss"
+	rss "github.com/haarts/go-pkg-rss"
+	"log"
 	"net/url"
 	"os"
-	"time"
-	"log"
 	"regexp"
+	"time"
 )
 
-const timeout = 50
+const timeout = 5
 
 func main() {
 	log.SetOutput(os.Stdout)
@@ -57,7 +57,7 @@ func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item
 
 func itemHandlerGoBlog(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
-			fmt.Println(item)
+		fmt.Println(item)
 	}
 
 	genericItemHandler(feed, ch, newItems, f)
