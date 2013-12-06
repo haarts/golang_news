@@ -7,9 +7,9 @@ import (
 )
 
 type settings struct {
-	ConsumerKey string
-	ConsumerSecret string
-	AccessToken string
+	ConsumerKey       string
+	ConsumerSecret    string
+	AccessToken       string
 	AccessTokenSecret string
 }
 
@@ -25,6 +25,10 @@ func ReadAccessToken() string {
 	return readSettings().AccessToken
 }
 
+func ReadAccessTokenSecret() string {
+	return readSettings().AccessTokenSecret
+}
+
 func readSettings() settings {
 	file, err := ioutil.ReadFile("./settings.json")
 	if err != nil {
@@ -33,7 +37,7 @@ func readSettings() settings {
 	var s settings
 	err = json.Unmarshal(file, &s)
 	if err != nil {
-	  fmt.Errorf("File failed to decode: %v\n", err)
+		fmt.Errorf("File failed to decode: %v\n", err)
 	}
 	return s
 }

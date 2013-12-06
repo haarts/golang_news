@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	rss "github.com/haarts/go-pkg-rss"
@@ -11,14 +12,18 @@ import (
 	"time"
 )
 
-const timeout = 5
+const timeout = 50
+
+var firstHN = true
+var firstReddit = true
+var firstGoBlog = true
 
 func main() {
 	log.SetOutput(os.Stdout)
 
 	//go PollFeed("http://blog.golang.org/feed.atom", itemHandlerGoBlog)
-	//go PollFeed("https://news.ycombinator.com/rss", itemHandlerHackerNews)
-	PollFeed("http://www.reddit.com/r/golang.rss", itemHandlerReddit)
+	PollFeed("https://news.ycombinator.com/rss", itemHandlerHackerNews)
+	//PollFeed("http://www.reddit.com/r/golang.rss", itemHandlerReddit)
 }
 
 func PollFeed(uri string, itemHandler rss.ItemHandler) {
@@ -47,12 +52,23 @@ func genericItemHandler(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item, i
 
 func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
-		if match, _ := regexp.MatchString(`\w Go`, item.Title); match {
-			fmt.Println(item)
+		if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
+			short_title := item.Title
+			if len(short_title) > 100 {
+				buffer := bytes.NewBufferString(short_title)
+				buffer.Truncate(100)
+				short_title = buffer.String()
+				short_title = short_title + "…"
+			}
+			PostTweet(short_title + " " + item.Links[0].Href + " #hackernews")
 		}
 	}
 
-	genericItemHandler(feed, ch, newItems, f)
+	if firstHN {
+		firstHN = false
+	} else {
+		genericItemHandler(feed, ch, newItems, f)
+	}
 }
 
 func itemHandlerGoBlog(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
@@ -77,10 +93,13 @@ func itemHandlerReddit(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 }
 
 func PostTweet(tweet string) {
-	anaconda.SetConsumerKey("9AuRCuPxHAuvPdLIt9Sg")
-	anaconda.SetConsumerSecret("14pYoR2B3IAeRsQiOZrSrjweseNj8YW97XbHjwkp4")
-	api := anaconda.NewTwitterApi("404687248-c3I6DzhE3KpZvX7lX1J3DFw1AFrtzj8xiwldvBJG", "P7pFC7ZEpKp5WvqtK6xnY0GPyH8Fqt9eOjDrjqi0jlIbO")
+	anaconda.SetConsumerKey(ReadConsumerKey())
+	anaconda.SetConsumerSecret(ReadConsumerSecret())
+	api := anaconda.NewTwitterApi(ReadAccessToken(), ReadAccessTokenSecret())
 
 	v := url.Values{}
-	api.PostTweet(tweet, v)
+	_, err := api.PostTweet(tweet, v)
+	if err != nil {
+		log.Printf("Error posting tweet: %s", err)
+	}
 }
