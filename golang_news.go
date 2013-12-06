@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	rss "github.com/haarts/go-pkg-rss"
@@ -14,16 +13,14 @@ import (
 
 const timeout = 50
 
-var firstHN = true
-var firstReddit = true
-var firstGoBlog = true
+var first = map[string]bool{}
 
 func main() {
 	log.SetOutput(os.Stdout)
 
-	//go PollFeed("http://blog.golang.org/feed.atom", itemHandlerGoBlog)
-	PollFeed("https://news.ycombinator.com/rss", itemHandlerHackerNews)
-	//PollFeed("http://www.reddit.com/r/golang.rss", itemHandlerReddit)
+	go PollFeed("http://blog.golang.org/feed.atom", itemHandlerGoBlog)
+	go PollFeed("https://news.ycombinator.com/rss", itemHandlerHackerNews)
+	PollFeed("http://www.reddit.com/r/golang.rss", itemHandlerReddit)
 }
 
 func PollFeed(uri string, itemHandler rss.ItemHandler) {
@@ -55,17 +52,14 @@ func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item
 		if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
 			short_title := item.Title
 			if len(short_title) > 100 {
-				buffer := bytes.NewBufferString(short_title)
-				buffer.Truncate(100)
-				short_title = buffer.String()
-				short_title = short_title + "…"
+				short_title = short_title[:99] + "…"
 			}
 			PostTweet(short_title + " " + item.Links[0].Href + " #hackernews")
 		}
 	}
 
-	if firstHN {
-		firstHN = false
+	if _, ok := first["hn"]; !ok {
+		first["hn"] = false
 	} else {
 		genericItemHandler(feed, ch, newItems, f)
 	}
@@ -73,10 +67,18 @@ func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item
 
 func itemHandlerGoBlog(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
-		fmt.Println(item)
+		short_title := item.Title
+		if len(short_title) > 100 {
+			short_title = short_title[:99] + "…"
+		}
+		PostTweet(short_title + " " + item.Links[0].Href + " #go_blog")
 	}
 
-	genericItemHandler(feed, ch, newItems, f)
+	if _, ok := first["go"]; !ok {
+		first["go"] = false
+	} else {
+		genericItemHandler(feed, ch, newItems, f)
+	}
 }
 
 func itemHandlerReddit(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
@@ -84,12 +86,19 @@ func itemHandlerReddit(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 		re := regexp.MustCompile(`([^"]+)">\[link\]`)
 		matches := re.FindStringSubmatch(item.Description)
 		if len(matches) == 2 {
-			fmt.Println(matches[1])
+			short_title := item.Title
+			if len(short_title) > 100 {
+				short_title = short_title[:99] + "…"
+			}
+			PostTweet(short_title + " " + matches[1] + " #reddit")
 		}
 	}
 
-	//Actually I don't think passing everything around is necessary as the closure remembers context
-	genericItemHandler(feed, ch, newItems, f)
+	if _, ok := first["reddit"]; !ok {
+		first["reddit"] = false
+	} else {
+		genericItemHandler(feed, ch, newItems, f)
+	}
 }
 
 func PostTweet(tweet string) {
