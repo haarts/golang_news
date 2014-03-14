@@ -17,6 +17,7 @@ var first = map[string]bool{}
 
 func main() {
 	log.SetOutput(os.Stdout)
+	log.Println("Starting")
 
 	go PollFeed("http://blog.golang.org/feed.atom", itemHandlerGoBlog)
 	go PollFeed("https://news.ycombinator.com/rss", itemHandlerHackerNews)
@@ -55,10 +56,13 @@ func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item
 				short_title = short_title[:99] + "…"
 			}
 			PostTweet(short_title + " " + item.Links[0].Href + " #hackernews")
+		} else {
+			log.Printf("Ignoring Hackernews item: %s", item.Title)
 		}
 	}
 
 	if _, ok := first["hn"]; !ok {
+		log.Println("Ignoring first batch of Hackernews")
 		first["hn"] = false
 	} else {
 		genericItemHandler(feed, ch, newItems, f)
@@ -75,6 +79,7 @@ func itemHandlerGoBlog(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	}
 
 	if _, ok := first["go"]; !ok {
+		log.Println("Ignoring first batch of Go blog")
 		first["go"] = false
 	} else {
 		genericItemHandler(feed, ch, newItems, f)
@@ -95,6 +100,7 @@ func itemHandlerReddit(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	}
 
 	if _, ok := first["reddit"]; !ok {
+		log.Println("Ignoring first batch of Reddit")
 		first["reddit"] = false
 	} else {
 		genericItemHandler(feed, ch, newItems, f)
@@ -105,6 +111,8 @@ func PostTweet(tweet string) {
 	anaconda.SetConsumerKey(ReadConsumerKey())
 	anaconda.SetConsumerSecret(ReadConsumerSecret())
 	api := anaconda.NewTwitterApi(ReadAccessToken(), ReadAccessTokenSecret())
+
+	log.Printf("Posting tweet: %s", tweet[len(tweet)-25:])
 
 	v := url.Values{}
 	_, err := api.PostTweet(tweet, v)
