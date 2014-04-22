@@ -1,10 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	rss "github.com/haarts/go-pkg-rss"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -28,8 +30,12 @@ func PollFeed(uri string, itemHandler rss.ItemHandler) {
 	feed := rss.New(timeout, true, chanHandler, itemHandler)
 
 	for {
-		if err := feed.Fetch(uri, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "[e] %s: %s", uri, err)
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client := &http.Client{Transport: tr}
+		if err := feed.FetchClient(uri, client, nil); err != nil {
+			fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
 			return
 		}
 
