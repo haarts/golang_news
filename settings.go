@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 )
 
 type settings struct {
@@ -30,14 +32,21 @@ func ReadAccessTokenSecret() string {
 }
 
 func readSettings() settings {
-	file, err := ioutil.ReadFile("./settings.json")
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		panic(err)
+	}
+
+	file, err := ioutil.ReadFile(filepath.Join(dir, "settings.json"))
 	if err != nil {
 		fmt.Errorf("File error: %v\n", err)
+		panic(err)
 	}
 	var s settings
 	err = json.Unmarshal(file, &s)
 	if err != nil {
 		fmt.Errorf("File failed to decode: %v\n", err)
+		panic(err)
 	}
 	return s
 }
