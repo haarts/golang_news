@@ -34,9 +34,17 @@ func PollFeed(uri string, itemHandler rss.ItemHandler) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 		client := &http.Client{Transport: tr}
+		retries := 0
+	Retry:
+		log.Printf("Trying (%d) %s", retries, uri)
 		if err := feed.FetchClient(uri, client, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
-			return
+			fmt.Fprintf(os.Stderr, "[%s] %s: %s\n", time.Now().Format(time.RFC3339), uri, err)
+			retries += 1
+			if retries < 3 {
+				goto Retry
+			} else {
+				return
+			}
 		}
 
 		<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
