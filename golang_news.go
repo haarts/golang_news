@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/ChimeraCoder/anaconda"
 	rss "github.com/haarts/go-pkg-rss"
 	"log"
@@ -34,9 +33,12 @@ func PollFeed(uri string, itemHandler rss.ItemHandler) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 		client := &http.Client{Transport: tr}
-		if err := feed.FetchClient(uri, client, nil); err != nil {
-			fmt.Fprintf(os.Stderr, "[e] %s: %s\n", uri, err)
-			return
+		err := feed.FetchClient(uri, client, nil)
+		if err != nil {
+			// don't die, just log and retry.
+			log.Printf("Error fetching %s: %s", uri, err)
+		} else {
+			log.Printf("Fetched %s\n", uri)
 		}
 
 		<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
