@@ -102,7 +102,7 @@ func (b blog) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item
 func (r reddit) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
 		re := regexp.MustCompile(`([^"]+)">\[link\]`)
-		matches := re.FindStringSubmatch(item.Description)
+		matches := re.FindStringSubmatch(item.Content.Text)
 		if len(matches) == 2 {
 			short_title := item.Title
 			if len(short_title) > 100 {
