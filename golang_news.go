@@ -2,31 +2,36 @@ package main
 
 import (
 	"crypto/tls"
-	"github.com/ChimeraCoder/anaconda"
-	rss "github.com/haarts/go-pkg-rss"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"time"
+
+	"github.com/ChimeraCoder/anaconda"
+	rss "github.com/jteeuwen/go-pkg-rss"
 )
 
 const timeout = 50
 
 var first = map[string]bool{}
 
+type hn struct{}
+type blog struct{}
+type reddit struct{}
+
 func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("Starting")
 
-	go PollFeed("http://blog.golang.org/feed.atom", itemHandlerGoBlog)
-	go PollFeed("https://news.ycombinator.com/rss", itemHandlerHackerNews)
-	PollFeed("http://www.reddit.com/r/golang.rss", itemHandlerReddit)
+	go PollFeed("http://blog.golang.org/feed.atom", blog{})
+	go PollFeed("https://news.ycombinator.com/rss", hn{})
+	PollFeed("http://www.reddit.com/r/golang.rss", reddit{})
 }
 
 func PollFeed(uri string, itemHandler rss.ItemHandler) {
-	feed := rss.New(timeout, true, chanHandler, itemHandler)
+	feed := rss.New(timeout, true, chanHandler, itemHandler.ProcessItems)
 
 	for {
 		tr := &http.Transport{
@@ -56,7 +61,7 @@ func genericItemHandler(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item, i
 	}
 }
 
-func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
+func (h hn) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
 		if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
 			short_title := item.Title
@@ -77,7 +82,7 @@ func itemHandlerHackerNews(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item
 	}
 }
 
-func itemHandlerGoBlog(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
+func (b blog) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
 		short_title := item.Title
 		if len(short_title) > 100 {
@@ -94,7 +99,7 @@ func itemHandlerGoBlog(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	}
 }
 
-func itemHandlerReddit(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
+func (r reddit) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
 		re := regexp.MustCompile(`([^"]+)">\[link\]`)
 		matches := re.FindStringSubmatch(item.Description)
