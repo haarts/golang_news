@@ -27,9 +27,10 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("Starting")
 
-	go PollFeed("http://blog.golang.org/feed.atom", blog{})
+	go PollFeed("http://www.juliabloggers.com/feed/", blog{})
+
 	go PollFeed("https://news.ycombinator.com/rss", hn{})
-	PollFeed("http://www.reddit.com/r/golang.rss", reddit{})
+	PollFeed("http://www.reddit.com/r/julia.rss", reddit{})
 }
 
 func PollFeed(uri string, itemHandler rss.ItemHandler) {
@@ -65,7 +66,7 @@ func genericItemHandler(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item, i
 
 func (h hn) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
 	f := func(item *rss.Item) {
-		if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
+		if match, _ := regexp.MatchString(`\w Julia( |$|\.)`, item.Title); match {
 			short_title := item.Title
 			if len(short_title) > 100 {
 				short_title = short_title[:99] + "…"
@@ -90,11 +91,11 @@ func (b blog) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item
 		if len(short_title) > 100 {
 			short_title = short_title[:99] + "…"
 		}
-		PostTweet(short_title + " " + item.Links[0].Href + " #go_blog")
+		PostTweet(short_title + " " + item.Links[0].Href + " #juliabloggers")
 	}
 
 	if _, ok := first["go"]; !ok {
-		log.Println("Ignoring first batch of Go blog")
+		log.Println("Ignoring first batch of Julia blog")
 		first["go"] = false
 	} else {
 		genericItemHandler(feed, ch, newItems, f)
