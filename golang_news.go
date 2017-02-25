@@ -1,16 +1,13 @@
 package main
 
 import (
-	"crypto/tls"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"regexp"
-	"time"
 
 	"github.com/ChimeraCoder/anaconda"
-	rss "github.com/jteeuwen/go-pkg-rss"
+	"github.com/SlyMarbo/rss"
 )
 
 const timeout = 50
@@ -27,98 +24,55 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("Starting")
 
-	go PollFeed("http://blog.golang.org/feed.atom", blog{})
-	go PollFeed("https://news.ycombinator.com/rss", hn{})
-	PollFeed("http://www.reddit.com/r/golang.rss", reddit{})
-}
+	blogItems := make(chan *rss.Item)
+	hnItems := make(chan *rss.Item)
+	redditItems := make(chan *rss.Item)
 
-func PollFeed(uri string, itemHandler rss.ItemHandler) {
-	feed := rss.New(timeout, true, chanHandler, itemHandler.ProcessItems)
+	go Poller("https://blog.golang.org/feed.atom", blogItems)
+	go Poller("https://news.ycombinator.com/rss", hnItems)
+	go Poller("https://www.reddit.com/r/golang.rss", redditItems)
 
 	for {
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-		client := &http.Client{Transport: tr}
-		err := feed.FetchClient(uri, client, nil)
-		if err != nil {
-			// don't die, just log and retry.
-			log.Printf("Error fetching %s: %s", uri, err)
-		} else {
-			log.Printf("Fetched %s\n", uri)
-		}
-
-		<-time.After(time.Duration(feed.SecondsTillUpdate() * 1e9))
-	}
-}
-
-func chanHandler(feed *rss.Feed, newchannels []*rss.Channel) {
-	//noop
-}
-
-func genericItemHandler(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item, individualItemHandler func(*rss.Item)) {
-	log.Printf("%d new item(s) in %s\n", len(newItems), feed.Url)
-	for _, item := range newItems {
-		individualItemHandler(item)
-	}
-}
-
-func (h hn) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
-	f := func(item *rss.Item) {
-		if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
-			short_title := item.Title
-			if len(short_title) > 100 {
-				short_title = short_title[:99] + "…"
-			}
-			PostTweet(short_title + " " + item.Links[0].Href + " #hackernews")
-		} else {
-			log.Printf("Ignoring Hackernews item: %s", item.Title)
+		select {
+		case item := <-blogItems:
+			blogItem(item)
+		case item := <-hnItems:
+			hnItem(item)
+		case item := <-redditItems:
+			redditItem(item)
 		}
 	}
-
-	if _, ok := first["hn"]; !ok {
-		log.Println("Ignoring first batch of Hackernews")
-		first["hn"] = false
-	} else {
-		genericItemHandler(feed, ch, newItems, f)
-	}
 }
 
-func (b blog) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
-	f := func(item *rss.Item) {
+func hnItem(item *rss.Item) {
+	if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
 		short_title := item.Title
 		if len(short_title) > 100 {
 			short_title = short_title[:99] + "…"
 		}
-		PostTweet(short_title + " " + item.Links[0].Href + " #go_blog")
-	}
-
-	if _, ok := first["go"]; !ok {
-		log.Println("Ignoring first batch of Go blog")
-		first["go"] = false
+		PostTweet(short_title + " " + item.Link + " #hackernews")
 	} else {
-		genericItemHandler(feed, ch, newItems, f)
+		log.Printf("Ignoring Hackernews item: %s", item.Title)
 	}
 }
 
-func (r reddit) ProcessItems(feed *rss.Feed, ch *rss.Channel, newItems []*rss.Item) {
-	f := func(item *rss.Item) {
-		re := regexp.MustCompile(`([^"]+)">\[link\]`)
-		matches := re.FindStringSubmatch(item.Content.Text)
-		if len(matches) == 2 {
-			short_title := item.Title
-			if len(short_title) > 100 {
-				short_title = short_title[:99] + "…"
-			}
-			PostTweet(short_title + " " + matches[1] + " #reddit")
-		}
+func blogItem(item *rss.Item) {
+	short_title := item.Title
+	if len(short_title) > 100 {
+		short_title = short_title[:99] + "…"
 	}
+	PostTweet(short_title + " " + item.Link + " #go_blog")
+}
 
-	if _, ok := first["reddit"]; !ok {
-		log.Println("Ignoring first batch of Reddit")
-		first["reddit"] = false
-	} else {
-		genericItemHandler(feed, ch, newItems, f)
+func redditItem(item *rss.Item) {
+	re := regexp.MustCompile(`([^"]+)">\[link\]`)
+	matches := re.FindStringSubmatch(item.Content)
+	if len(matches) == 2 {
+		short_title := item.Title
+		if len(short_title) > 100 {
+			short_title = short_title[:99] + "…"
+		}
+		PostTweet(short_title + " " + matches[1] + " #reddit")
 	}
 }
 
@@ -127,7 +81,7 @@ func PostTweet(tweet string) {
 	anaconda.SetConsumerSecret(ReadConsumerSecret())
 	api := anaconda.NewTwitterApi(ReadAccessToken(), ReadAccessTokenSecret())
 
-	log.Printf("Posting tweet: %s", tweet[len(tweet)-25:])
+	log.Printf("Posting tweet: %s", tweet)
 
 	v := url.Values{}
 	_, err := api.PostTweet(tweet, v)
