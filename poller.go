@@ -13,7 +13,7 @@ func Poller(uri string, items chan<- *rss.Item) {
 
 	for _, item := range feed.Items {
 		// ignore the first batch of items
-		//items <- item
+		log.Printf("Ignoring first item: %s", item.Title)
 	}
 
 	<-time.After(time.Duration(feed.Refresh.Sub(time.Now())))
