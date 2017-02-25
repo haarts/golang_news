@@ -10,16 +10,6 @@ import (
 	"github.com/SlyMarbo/rss"
 )
 
-const timeout = 50
-
-var first = map[string]bool{}
-
-//var first = map[string]bool{"reddit": true, "hn": true, "go": true}
-
-type hn struct{}
-type blog struct{}
-type reddit struct{}
-
 func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("Starting")
