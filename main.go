@@ -14,6 +14,10 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("Starting")
 
+	pollFeeds()
+}
+
+func pollFeeds() {
 	blogItems := make(chan *rss.Item)
 	hnItems := make(chan *rss.Item)
 	redditItems := make(chan *rss.Item)
