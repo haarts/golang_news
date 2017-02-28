@@ -22,9 +22,9 @@ func pollFeeds() {
 	hnItems := make(chan *rss.Item)
 	redditItems := make(chan *rss.Item)
 
-	go Poller("https://blog.golang.org/feed.atom", blogItems)
-	go Poller("https://news.ycombinator.com/rss", hnItems)
-	go Poller("https://www.reddit.com/r/golang.rss", redditItems)
+	go poller("https://blog.golang.org/feed.atom", blogItems)
+	go poller("https://news.ycombinator.com/rss", hnItems)
+	go poller("https://www.reddit.com/r/golang.rss", redditItems)
 
 	for {
 		select {

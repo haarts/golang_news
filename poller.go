@@ -8,7 +8,7 @@ import (
 	"github.com/SlyMarbo/rss"
 )
 
-func Poller(uri string, items chan<- *rss.Item) {
+func poller(uri string, items chan<- *rss.Item) {
 	feed := getFeed(uri)
 
 	for _, item := range feed.Items {
