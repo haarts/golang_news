@@ -14,6 +14,7 @@ func poller(uri string, items chan<- *rss.Item) {
 	for _, item := range feed.Items {
 		// ignore the first batch of items
 		log.Printf("Ignoring first item: %s", item.Title)
+		item.Read = true
 	}
 
 	<-time.After(time.Duration(feed.Refresh.Sub(time.Now())))
@@ -23,12 +24,19 @@ func poller(uri string, items chan<- *rss.Item) {
 		if err != nil {
 			log.Printf("Error fetching %s: %s", uri, err)
 		} else {
-			for _, item := range feed.Items {
-				items <- item
-			}
+			processItems(feed.Items, items)
 		}
 
 		<-time.After(time.Duration(feed.Refresh.Sub(time.Now())))
+	}
+}
+
+func processItems(items []*rss.Item, channel chan<- *rss.Item) {
+	for _, item := range items {
+		if item.Read == false {
+			channel <- item
+			item.Read = true
+		}
 	}
 }
 
