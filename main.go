@@ -13,11 +13,13 @@ import (
 func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("Starting")
+	tweets := make(chan string)
 
-	pollFeeds()
+	go pollFeeds(tweets)
+	postTweets(tweets)
 }
 
-func pollFeeds() {
+func pollFeeds(publishTweet chan string) {
 	blogItems := make(chan *rss.Item)
 	hnItems := make(chan *rss.Item)
 	redditItems := make(chan *rss.Item)
@@ -29,36 +31,43 @@ func pollFeeds() {
 	for {
 		select {
 		case item := <-blogItems:
-			blogItem(item)
+			publishTweet <- blogItem(item)
 		case item := <-hnItems:
-			hnItem(item)
+			publishTweet <- hnItem(item)
 		case item := <-redditItems:
-			redditItem(item)
+			publishTweet <- redditItem(item)
 		}
 	}
 }
 
-func hnItem(item *rss.Item) {
+func postTweets(tweets chan string) {
+	for tweet := range tweets {
+		PostTweet(tweet)
+	}
+}
+
+func hnItem(item *rss.Item) string {
 	if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
 		short_title := item.Title
 		if len(short_title) > 100 {
 			short_title = short_title[:99] + "…"
 		}
-		PostTweet(short_title + " " + item.Link + " #hackernews")
+		return short_title + " " + item.Link + " #hackernews"
 	} else {
 		log.Printf("Ignoring Hackernews item: %s", item.Title)
+		return ""
 	}
 }
 
-func blogItem(item *rss.Item) {
+func blogItem(item *rss.Item) string {
 	short_title := item.Title
 	if len(short_title) > 100 {
 		short_title = short_title[:99] + "…"
 	}
-	PostTweet(short_title + " " + item.Link + " #go_blog")
+	return short_title + " " + "https:" + item.Link + " #go_blog"
 }
 
-func redditItem(item *rss.Item) {
+func redditItem(item *rss.Item) string {
 	re := regexp.MustCompile(`([^"]+)">\[link\]`)
 	matches := re.FindStringSubmatch(item.Content)
 	if len(matches) == 2 {
@@ -66,8 +75,9 @@ func redditItem(item *rss.Item) {
 		if len(short_title) > 100 {
 			short_title = short_title[:99] + "…"
 		}
-		PostTweet(short_title + " " + matches[1] + " #reddit")
+		return short_title + " " + matches[1] + " #reddit"
 	}
+	return ""
 }
 
 func PostTweet(tweet string) {
