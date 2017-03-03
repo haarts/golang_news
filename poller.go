@@ -17,7 +17,7 @@ func poller(uri string, items chan<- *rss.Item) {
 		item.Read = true
 	}
 
-	<-time.After(time.Duration(feed.Refresh.Sub(time.Now())))
+	<-time.After(feed.Refresh.Sub(time.Now()))
 
 	for {
 		err := feed.Update()
@@ -27,7 +27,7 @@ func poller(uri string, items chan<- *rss.Item) {
 			processItems(feed.Items, items)
 		}
 
-		<-time.After(time.Duration(feed.Refresh.Sub(time.Now())))
+		<-time.After(feed.Refresh.Sub(time.Now()))
 	}
 }
 
