@@ -6,7 +6,7 @@ It checks [HackerNews](http://news.ycombinator.com), [Reddit](http://www.reddit.
 
 ## Build
 
-`$ go build .`
+`$ go build`
 
 ## Run
 
