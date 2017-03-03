@@ -20,6 +20,7 @@ func main() {
 }
 
 func pollFeeds(publishTweet chan string) {
+	// variable number of select/case: https://play.golang.org/p/8zwvSk4kjx
 	blogItems := make(chan *rss.Item)
 	hnItems := make(chan *rss.Item)
 	redditItems := make(chan *rss.Item)
