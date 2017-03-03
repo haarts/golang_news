@@ -49,6 +49,7 @@ func pollFeeds(publishTweet chan string, feeds []Feed) {
 	for _, feed := range feeds {
 		itemProducer := make(chan *rss.Item)
 		itemProducers = append(itemProducers, itemProducer)
+		log.Printf("Adding '%s'", feed.URL)
 		go poller(feed.URL, itemProducer)
 	}
 
