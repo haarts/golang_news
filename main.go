@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"plugin"
@@ -68,7 +67,7 @@ func pollFeeds(publishTweet chan string, feeds []Feed) {
 			continue
 		}
 
-		fmt.Printf("Read from channel %#v and received %s\n", itemProducers[chosen], value.String())
+		publishTweet <- feeds[chosen].ItemHandler(value.Interface().(*rss.Item))
 	}
 }
 
