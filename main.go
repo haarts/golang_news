@@ -2,11 +2,9 @@ package main
 
 import (
 	"log"
-	"net/url"
 	"os"
 	"regexp"
 
-	"github.com/ChimeraCoder/anaconda"
 	"github.com/SlyMarbo/rss"
 )
 
@@ -81,18 +79,4 @@ func redditItem(item *rss.Item) string {
 		return short_title + " " + matches[1] + " #reddit"
 	}
 	return ""
-}
-
-func PostTweet(tweet string) {
-	anaconda.SetConsumerKey(ReadConsumerKey())
-	anaconda.SetConsumerSecret(ReadConsumerSecret())
-	api := anaconda.NewTwitterApi(ReadAccessToken(), ReadAccessTokenSecret())
-
-	log.Printf("Posting tweet: %s", tweet)
-
-	v := url.Values{}
-	_, err := api.PostTweet(tweet, v)
-	if err != nil {
-		log.Printf("Error posting tweet: %s", err)
-	}
 }
