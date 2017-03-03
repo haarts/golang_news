@@ -42,7 +42,9 @@ func pollFeeds(publishTweet chan string) {
 
 func postTweets(tweets chan string) {
 	for tweet := range tweets {
-		PostTweet(tweet)
+		if tweet != "" {
+			PostTweet(tweet)
+		}
 	}
 }
 
