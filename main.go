@@ -2,42 +2,72 @@ package main
 
 import (
 	"log"
-	"net/url"
 	"os"
-	"regexp"
+	"plugin"
+	"reflect"
 
-	"github.com/ChimeraCoder/anaconda"
 	"github.com/SlyMarbo/rss"
 )
+
+type Feed struct {
+	URL         string
+	ItemHandler func(*rss.Item) string
+}
 
 func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("Starting")
+
+	feeds, err := feeds()
+	if err != nil {
+		return
+	}
 	tweets := make(chan string)
 
-	go pollFeeds(tweets)
+	go pollFeeds(tweets, feeds)
 	postTweets(tweets)
 }
 
-func pollFeeds(publishTweet chan string) {
-	// variable number of select/case: https://play.golang.org/p/8zwvSk4kjx
-	blogItems := make(chan *rss.Item)
-	hnItems := make(chan *rss.Item)
-	redditItems := make(chan *rss.Item)
+func feeds() ([]Feed, error) {
+	p, err := plugin.Open(os.Args[1])
+	if err != nil {
+		log.Printf("Error reading plugin: %s", err)
+		return nil, err
+	}
+	listFunc, err := p.Lookup("List")
+	if err != nil {
+		log.Printf("Error looking up 'List': %s", err)
+		return nil, err
+	}
 
-	go poller("https://blog.golang.org/feed.atom", blogItems)
-	go poller("https://news.ycombinator.com/rss", hnItems)
-	go poller("https://www.reddit.com/r/golang.rss", redditItems)
+	return listFunc.(func() []Feed)(), nil
+}
 
-	for {
-		select {
-		case item := <-blogItems:
-			publishTweet <- blogItem(item)
-		case item := <-hnItems:
-			publishTweet <- hnItem(item)
-		case item := <-redditItems:
-			publishTweet <- redditItem(item)
+func pollFeeds(publishTweet chan string, feeds []Feed) {
+	itemProducers := []chan *rss.Item{}
+	for _, feed := range feeds {
+		itemProducer := make(chan *rss.Item)
+		itemProducers = append(itemProducers, itemProducer)
+		log.Printf("Adding '%s'", feed.URL)
+		go poller(feed.URL, itemProducer)
+	}
+
+	cases := make([]reflect.SelectCase, len(itemProducers))
+	for i, ch := range itemProducers {
+		cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ch)}
+	}
+
+	activeItemProducers := len(cases)
+	for activeItemProducers > 0 {
+		chosen, value, ok := reflect.Select(cases)
+		if !ok {
+			// The chosen channel has been closed, so zero out the channel to disable the case
+			cases[chosen].Chan = reflect.ValueOf(nil)
+			activeItemProducers -= 1
+			continue
 		}
+
+		publishTweet <- feeds[chosen].ItemHandler(value.Interface().(*rss.Item))
 	}
 }
 
@@ -46,53 +76,5 @@ func postTweets(tweets chan string) {
 		if tweet != "" {
 			PostTweet(tweet)
 		}
-	}
-}
-
-func hnItem(item *rss.Item) string {
-	if match, _ := regexp.MatchString(`\w Go( |$|\.)`, item.Title); match {
-		short_title := item.Title
-		if len(short_title) > 100 {
-			short_title = short_title[:99] + "…"
-		}
-		return short_title + " " + item.Link + " #hackernews"
-	} else {
-		log.Printf("Ignoring Hackernews item: %s", item.Title)
-		return ""
-	}
-}
-
-func blogItem(item *rss.Item) string {
-	short_title := item.Title
-	if len(short_title) > 100 {
-		short_title = short_title[:99] + "…"
-	}
-	return short_title + " " + "https:" + item.Link + " #go_blog"
-}
-
-func redditItem(item *rss.Item) string {
-	re := regexp.MustCompile(`([^"]+)">\[link\]`)
-	matches := re.FindStringSubmatch(item.Content)
-	if len(matches) == 2 {
-		short_title := item.Title
-		if len(short_title) > 100 {
-			short_title = short_title[:99] + "…"
-		}
-		return short_title + " " + matches[1] + " #reddit"
-	}
-	return ""
-}
-
-func PostTweet(tweet string) {
-	anaconda.SetConsumerKey(ReadConsumerKey())
-	anaconda.SetConsumerSecret(ReadConsumerSecret())
-	api := anaconda.NewTwitterApi(ReadAccessToken(), ReadAccessTokenSecret())
-
-	log.Printf("Posting tweet: %s", tweet)
-
-	v := url.Values{}
-	_, err := api.PostTweet(tweet, v)
-	if err != nil {
-		log.Printf("Error posting tweet: %s", err)
 	}
 }

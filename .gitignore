@@ -1,2 +1,4 @@
 settings.json
 golang_news
+!plugins/*
+*.so
