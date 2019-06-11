@@ -5,14 +5,9 @@ import (
 	"os"
 	"plugin"
 	"reflect"
-
+	"github.com/haarts/golang_news/feed"
 	"github.com/SlyMarbo/rss"
 )
-
-type Feed struct {
-	URL         string
-	ItemHandler func(*rss.Item) string
-}
 
 func main() {
 	log.SetOutput(os.Stdout)
@@ -28,7 +23,7 @@ func main() {
 	postTweets(tweets)
 }
 
-func feeds() ([]Feed, error) {
+func feeds() ([]feed.Feed, error) {
 	p, err := plugin.Open(os.Args[1])
 	if err != nil {
 		log.Printf("Error reading plugin: %s", err)
@@ -40,10 +35,10 @@ func feeds() ([]Feed, error) {
 		return nil, err
 	}
 
-	return listFunc.(func() []Feed)(), nil
+	return listFunc.(func() []feed.Feed)(), nil
 }
 
-func pollFeeds(publishTweet chan string, feeds []Feed) {
+func pollFeeds(publishTweet chan string, feeds []feed.Feed) {
 	itemProducers := []chan *rss.Item{}
 	for _, feed := range feeds {
 		itemProducer := make(chan *rss.Item)

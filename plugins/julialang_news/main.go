@@ -5,27 +5,21 @@ import (
 	"log"
 	"regexp"
 
+	"github.com/haarts/golang_news/feed"
 	"github.com/SlyMarbo/rss"
 )
 
-type Feed struct {
-	URL         string
-	ItemHandler func(*rss.Item) string
-}
 
-func List() []Feed {
-	return []Feed{
-		Feed{
+
+func List() []feed.Feed {
+	return []feed.Feed{
+		feed.Feed{
 			URL:         "http://www.juliabloggers.com/feed/",
 			ItemHandler: blogItem,
 		},
-		Feed{
+		feed.Feed{
 			URL:         "https://news.ycombinator.com/rss",
 			ItemHandler: hnItem,
-		},
-		Feed{
-			URL:         "https://www.reddit.com/r/julia.rss",
-			ItemHandler: redditItem,
 		},
 	}
 }
