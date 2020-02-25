@@ -14,7 +14,7 @@ import (
 func List() []feed.Feed {
 	return []feed.Feed{
 		feed.Feed{
-			URL:         "http://www.juliabloggers.com/feed/",
+			URL:         "https://www.juliabloggers.com/feed/",
 			ItemHandler: blogItem,
 		},
 		feed.Feed{
