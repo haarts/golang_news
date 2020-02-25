@@ -5,11 +5,9 @@ import (
 	"log"
 	"regexp"
 
-	"github.com/haarts/golang_news/feed"
 	"github.com/SlyMarbo/rss"
+	"github.com/haarts/golang_news/feed"
 )
-
-
 
 func List() []feed.Feed {
 	return []feed.Feed{
